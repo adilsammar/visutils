@@ -1,6 +1,7 @@
 import os
 import tensorflow as tf
 import numpy as np
+import glob
 
 
 def _load_data(dataset='cifar10'):
@@ -58,8 +59,8 @@ def get_dataset(dataset='cifar10'):
     else:
         print('Dataset Exists Reading files')
 
-    return (tf.data.TFRecordDataset(os.path.join(path, 'train.tfrecords')),
-            tf.data.TFRecordDataset(os.path.join(path, 'test.tfrecords')))
+    return (tf.data.TFRecordDataset([f for f in glob.glob(os.path.join(path, 'train', "*.tfrecords"))]),
+            tf.data.TFRecordDataset([f for f in glob.glob(os.path.join(path, 'test', "*.tfrecords"))]))
 
 
 get_dataset('cifar10')
