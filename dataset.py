@@ -3,6 +3,8 @@ import tensorflow as tf
 import numpy as np
 import glob
 
+tf.enable_eager_execution()
+
 
 def _load_data(dataset='cifar10'):
     if dataset == 'cifar10':
@@ -12,11 +14,26 @@ def _load_data(dataset='cifar10'):
 
 
 def _int64_feature(value):
+    """Returns an int64_list from a bool / enum / int / uint."""
     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
 
 
 def _bytes_feature(value):
+    """Returns a bytes_list from a string / byte."""
+    # If the value is an eager tensor BytesList won't unpack a string from an EagerTensor.
+    if isinstance(value, type(tf.constant(0))):
+        value = value.numpy()
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
+
+
+def _serialize_example(image, label):
+    feature = {
+        'image': _bytes_feature(image),
+        'label': _int64_feature(label),
+    }
+
+    example_proto = tf.train.Example(features=tf.train.Features(feature=feature))
+    return example_proto.SerializeToString()
 
 
 def _convert_to_tf_record(data, labels, dataset='cifar10', which='train'):
@@ -27,16 +44,12 @@ def _convert_to_tf_record(data, labels, dataset='cifar10', which='train'):
             os.makedirs(output_file)
         print('Creating TFRecords file for {}, at {}'.format(dataset, output_file))
         alias = 1
-        for b in np.array_split(range(len(labels)), 2):
+        for b in np.array_split(range(len(labels)), len(labels) / 2000):
             with tf.io.TFRecordWriter(
                     os.path.join(output_file, '{}-{}.tfrecords'.format(which, alias))) as record_writer:
                 for i in b:
-                    example = tf.train.Example(features=tf.train.Features(
-                        feature={
-                            'image': _bytes_feature(tf.compat.as_bytes(data[i].tostring())),
-                            'label': _int64_feature(labels[i])
-                        }))
-                    record_writer.write(example.SerializeToString())
+                    example = _serialize_example(tf.io.serialize_tensor(data[i].astype('float32') / 255.0), labels[i])
+                    record_writer.write(example)
 
             alias += 1
 
@@ -58,8 +71,9 @@ def _parse_tf_record(serialized_example):
     }
 
     example = tf.io.parse_single_example(serialized_example, feature_description)
+    image = tf.io.parse_tensor(example['image'], out_type=float)
 
-    return example['image'], example['label']
+    return image, example['label']
 
 
 def get_dataset(dataset='cifar10'):
