@@ -61,6 +61,3 @@ def get_dataset(dataset='cifar10'):
 
     return (tf.data.TFRecordDataset([f for f in glob.glob(os.path.join(path, 'train', "*.tfrecords"))]),
             tf.data.TFRecordDataset([f for f in glob.glob(os.path.join(path, 'test', "*.tfrecords"))]))
-
-
-get_dataset('cifar10')
