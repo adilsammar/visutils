@@ -1,7 +1,6 @@
 import os
 import tensorflow as tf
 import numpy as np
-import glob
 
 tf.enable_eager_execution()
 
@@ -26,20 +25,31 @@ def _bytes_feature(value):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
 
-def _serialize_example(image, label):
-    feature = {
-        'image': _bytes_feature(image),
-        'label': _int64_feature(label),
-    }
+def _serialize_example(image, label, categorical):
+    if categorical:
+        feature = {
+            'image': _bytes_feature(image),
+            'label': _bytes_feature(label),
+        }
+    else:
+        feature = {
+            'image': _bytes_feature(image),
+            'label': _int64_feature(label),
+        }
 
     example_proto = tf.train.Example(features=tf.train.Features(feature=feature))
     return example_proto.SerializeToString()
 
 
-def _convert_to_tf_record(data, labels, dataset='cifar10', which='train'):
+def _convert_to_tf_record(data, labels, dataset='cifar10', which='train', categorical=True):
     """Converts dataset to TFRecords."""
     if dataset == 'cifar10':
-        output_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), dataset, '{}'.format(which))
+        if categorical:
+            output_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), dataset, 'categorical',
+                                       '{}'.format(which))
+        else:
+            output_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), dataset, 'direct',
+                                       '{}'.format(which))
         if not os.path.exists(output_file):
             os.makedirs(output_file)
         print('Creating TFRecords file for {}, at {}'.format(dataset, output_file))
@@ -48,26 +58,40 @@ def _convert_to_tf_record(data, labels, dataset='cifar10', which='train'):
             with tf.io.TFRecordWriter(
                     os.path.join(output_file, '{}-{}.tfrecords'.format(which, alias))) as record_writer:
                 for i in b:
-                    example = _serialize_example(tf.io.serialize_tensor(data[i].astype('float32') / 255.0), labels[i])
+                    if categorical:
+                        example = _serialize_example(
+                            tf.io.serialize_tensor(data[i].astype('float32') / 255.0),
+                            tf.io.serialize_tensor(tf.keras.utils.to_categorical(labels[i].astype('int64'), 10)),
+                            categorical
+                        )
+                    else:
+                        example = _serialize_example(
+                            tf.io.serialize_tensor(data[i].astype('float32') / 255.0),
+                            labels[i].astype('int64'),
+                            categorical
+                        )
                     record_writer.write(example)
 
             alias += 1
 
 
-def _generate_tf_records(dataset='cifar10'):
+def _generate_tf_records(dataset='cifar10', categorical=True):
     print('Generating TFRecords for {}'.format(dataset))
     (x_train, y_train), (x_test, y_test) = _load_data(dataset)
 
-    _convert_to_tf_record(x_train, y_train, dataset=dataset, which='train')
-    _convert_to_tf_record(x_test, y_test, dataset=dataset, which='test')
+    _convert_to_tf_record(x_train, y_train, dataset=dataset, which='train', categorical=categorical)
+    _convert_to_tf_record(x_test, y_test, dataset=dataset, which='test', categorical=categorical)
 
     print('Done!')
 
 
-def generate_dataset(dataset='cifar10'):
-    path = os.path.join(os.path.dirname(os.path.realpath(__file__)), dataset)
+def get_dataset(dataset='cifar10', categorical=True):
+    if categorical:
+        path = os.path.join(os.path.dirname(os.path.realpath(__file__)), dataset, 'categorical')
+    else:
+        path = os.path.join(os.path.dirname(os.path.realpath(__file__)), dataset, 'direct')
     if not os.path.exists(path):
         os.makedirs(path)
-        _generate_tf_records(dataset)
+        _generate_tf_records(dataset, categorical)
     else:
         print('Dataset Already Exists')
