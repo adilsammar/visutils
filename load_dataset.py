@@ -1,7 +1,7 @@
 import os
 import tensorflow as tf
 import glob
-import dataset as ds
+from . import dataset as ds
 
 
 def _parse_tf_record(categorical):
