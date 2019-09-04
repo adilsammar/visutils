@@ -1,6 +1,7 @@
 import os
 import tensorflow as tf
 import glob
+import dataset as ds
 
 
 def _parse_tf_record(categorical):
@@ -34,8 +35,7 @@ def get_dataset(dataset='cifar10', categorical=True):
     else:
         path = os.path.join(os.path.dirname(os.path.realpath(__file__)), dataset, 'direct')
     if not os.path.exists(path):
-        os.makedirs(path)
-        _generate_tf_records(dataset, categorical)
+        ds.get_dataset(dataset, categorical)
     else:
         print('Dataset Exists Reading files')
 
