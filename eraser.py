@@ -34,11 +34,10 @@ def random_erasing(probability=0.1, sl=0.02, sh=0.4, r1=0.3, train_mean=[0.49140
     return eraser
 
 
-def random_erasing_x_x(probability=0.5, train_mean=[0.4914009, 0.48215896, 0.4465308], patch_size=(8, 8)):
+def random_erasing_x_x(probability=0.5, train_mean=[0.4914009, 0.48215896, 0.4465308], patch_size=(8, 8), channel=3):
     # HWC order
     height = tf.Variable(32, tf.int32)
     width = tf.Variable(32, tf.int32)
-    channel = tf.Variable(3, tf.int32)
     h = tf.Variable(patch_size[0], tf.int32)
     w = tf.Variable(patch_size[1], tf.int32)
 
