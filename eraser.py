@@ -49,7 +49,8 @@ def random_erasing_x_x(probability=0.5, train_mean=[0.4914009, 0.48215896, 0.446
         y1 = tf.random.uniform([], 0, width + 1 - w, tf.int32)
 
         # Create mean image
-        mean_image = tf.math.add(tf.zeros([patch_size[0], patch_size[1], channel], tf.float32), train_mean)
+        zeros_image = tf.zeros([patch_size[0], patch_size[1], channel], tf.float32)
+        mean_image = tf.math.add(zeros_image, train_mean)
         erase_area = tf.math.subtract(mean_image, img[x1:(x1 + h), y1:(y1 + w), :])
         # Pad patch
         overlay_pad = tf.pad(erase_area, [[x1, height - (x1 + h)], [y1, width - (y1 + w)], [0, 0]])
