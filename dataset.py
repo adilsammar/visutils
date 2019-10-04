@@ -5,11 +5,37 @@ import numpy as np
 tf.enable_eager_execution()
 
 
-def _load_data(dataset='cifar10'):
+def _normalize(x, mean, std):
+    return ((x - mean) / std).astype('float32')
+
+
+def _pad4(x):
+    return np.pad(x, [(0, 0), (4, 4), (4, 4), (0, 0)], mode='reflect')
+
+
+def _load_data(dataset='cifar10', categorical=True):
     if dataset == 'cifar10':
         # Load CIFAR 10 Data
         (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
-        return (x_train, y_train), (x_test, y_test)
+
+        len_train, len_test = len(x_train), len(x_test)
+        y_train = y_train.astype('int64').reshape(len_train)
+        y_test = y_test.astype('int64').reshape(len_test)
+
+        x_train = x_train.astype('float32') / 255
+        x_test = x_test.astype('float32') / 255
+
+        train_mean = np.mean(x_train, axis=(0, 1, 2))
+        train_std = np.std(x_train, axis=(0, 1, 2))
+
+        x_train = _normalize(_pad4(x_train), train_mean, train_std)
+        x_test = _normalize(x_test, train_mean, train_std)
+
+        if categorical:
+            return (x_train, tf.keras.utils.to_categorical(y_train, 10)), \
+                   (x_test, tf.keras.utils.to_categorical(y_test, 10))
+        else:
+            return (x_train, y_train), (x_test, y_test)
 
 
 def _int64_feature(value):
@@ -60,14 +86,14 @@ def _convert_to_tf_record(data, labels, dataset='cifar10', which='train', catego
                 for i in b:
                     if categorical:
                         example = _serialize_example(
-                            tf.io.serialize_tensor(data[i].astype('float32') / 255.0),
-                            tf.io.serialize_tensor(tf.keras.utils.to_categorical(labels[i].astype('int64'), 10)),
+                            tf.io.serialize_tensor(data[i]),
+                            tf.io.serialize_tensor(labels[i]),
                             categorical
                         )
                     else:
                         example = _serialize_example(
-                            tf.io.serialize_tensor(data[i].astype('float32') / 255.0),
-                            labels[i].astype('int64'),
+                            tf.io.serialize_tensor(data[i]),
+                            labels[i],
                             categorical
                         )
                     record_writer.write(example)
@@ -77,7 +103,7 @@ def _convert_to_tf_record(data, labels, dataset='cifar10', which='train', catego
 
 def _generate_tf_records(dataset='cifar10', categorical=True):
     print('Generating TFRecords for {}'.format(dataset))
-    (x_train, y_train), (x_test, y_test) = _load_data(dataset)
+    (x_train, y_train), (x_test, y_test) = _load_data(dataset, categorical)
 
     _convert_to_tf_record(x_train, y_train, dataset=dataset, which='train', categorical=categorical)
     _convert_to_tf_record(x_test, y_test, dataset=dataset, which='test', categorical=categorical)
@@ -95,3 +121,6 @@ def get_dataset(dataset='cifar10', categorical=True):
         _generate_tf_records(dataset, categorical)
     else:
         print('Dataset Already Exists')
+
+
+get_dataset(dataset='cifar10', categorical=False)
