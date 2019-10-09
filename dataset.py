@@ -121,6 +121,3 @@ def get_dataset(dataset='cifar10', categorical=True):
         _generate_tf_records(dataset, categorical)
     else:
         print('Dataset Already Exists')
-
-
-get_dataset(dataset='cifar10', categorical=False)
